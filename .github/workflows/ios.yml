@@ -1,0 +1,63 @@
+name: iPhone-App (IPA) bauen
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: XcodeGen installieren
+        run: brew install xcodegen
+
+      - name: Spiel ins iOS-Projekt kopieren
+        run: |
+          rm -rf ios/web
+          mkdir -p ios/web
+          cp web/index.html ios/web/
+
+      - name: Xcode-Projekt erzeugen
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: App bauen (unsigniert)
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project Wuerfelwerk.xcodeproj \
+            -target Wuerfelwerk \
+            -configuration Release \
+            -sdk iphoneos \
+            SYMROOT="$PWD/build" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: IPA verpacken
+        run: |
+          mkdir -p Payload
+          cp -R ios/build/Release-iphoneos/Wuerfelwerk.app Payload/
+          zip -qry Wuerfelwerk.ipa Payload
+          ls -la Wuerfelwerk.ipa
+
+      - name: Als Build-Artefakt speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: Wuerfelwerk-ipa
+          path: Wuerfelwerk.ipa
+
+      - name: Als Release veröffentlichen (direkter Download am iPhone)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          gh release create "$TAG" Wuerfelwerk.ipa \
+            --title "Würfelwerk Build ${{ github.run_number }}" \
+            --notes "Unsignierte IPA zum Sideloaden mit AltStore oder SideStore." \
+            --latest
