@@ -25,7 +25,7 @@ final class GameViewController: UIViewController {
     override func loadView() {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
-        config.mediaTypesPlaybackRequiringUserAction = []
+        config.mediaTypesRequiringUserActionForPlayback = []
         config.websiteDataStore = .default()   // Spielstand & Bestwert bleiben gespeichert
 
         webView = WKWebView(frame: .zero, configuration: config)
